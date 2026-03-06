@@ -1,0 +1,3 @@
+[submodule "content"]
+	path = content
+	url = https://github.com/oovg/om-outer-mind.git
