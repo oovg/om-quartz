@@ -1,0 +1,216 @@
+@use "../../styles/variables.scss" as *;
+
+/* Header icon launcher (match darkmode/readermode sizing) */
+.chatlaunch {
+  cursor: pointer;
+  padding: 0;
+  position: relative;
+  background: none;
+  border: none;
+  width: 20px;
+  height: 32px;
+  margin: 0;
+  text-align: inherit;
+  flex-shrink: 0;
+
+  & svg {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    top: calc(50% - 10px);
+    color: var(--darkgray);
+  }
+}
+
+/* Shell: contains modal; opened via header ChatLauncher icon */
+.om-chat-shell {
+  z-index: 1000;
+}
+
+/* Modal: centered in viewport; dimmed backdrop */
+.om-chat-modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  pointer-events: auto;
+  backdrop-filter: blur(4px);
+  z-index: 999;
+}
+
+.om-chat-modal__panel {
+  position: relative;
+  width: 75%;
+  max-width: 50rem;
+  height: calc(75vh - 12vh);
+  max-height: calc(75vh - 12vh);
+  display: flex;
+  flex-direction: column;
+  border-radius: 7px;
+  border: 1px solid var(--lightgray);
+  background: var(--light);
+  box-shadow:
+    0 14px 50px rgba(27, 33, 48, 0.12),
+    0 10px 30px rgba(27, 33, 48, 0.16);
+  z-index: 1;
+
+  @media all and not ($desktop) {
+    width: 100%;
+    max-height: 85vh;
+    height: min(85vh, 48rem);
+  }
+}
+
+.om-chat-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--lightgray);
+  flex-shrink: 0;
+}
+
+.om-chat-modal__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.om-chat-modal__close {
+  padding: 0.25rem 0.5rem;
+  font-size: 1.25rem;
+  line-height: 1;
+  border: none;
+  border-radius: 0.25rem;
+  background: transparent;
+  color: var(--gray);
+  cursor: pointer;
+}
+
+.om-chat-modal__close:hover {
+  color: var(--dark);
+  background: var(--lightgray);
+}
+
+.om-chat-modal__close:focus {
+  outline: 2px solid var(--secondary);
+  outline-offset: 1px;
+}
+
+/* Chat body inside modal */
+.om-chat {
+  display: flex;
+  flex-direction: column;
+  padding: 1rem 1.25rem;
+  min-height: 0;
+  flex: 1;
+  background: var(--light);
+}
+
+.om-chat__messages {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin-bottom: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.om-chat__empty {
+  margin: 0;
+  color: var(--gray);
+  font-size: 1rem;
+}
+
+.om-chat__message {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.om-chat__message-role {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--gray);
+}
+
+.om-chat__message--user .om-chat__message-role {
+  color: var(--secondary);
+}
+
+.om-chat__message-content {
+  font-size: 1rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--dark);
+}
+
+.om-chat__message-content--loading {
+  color: var(--gray);
+}
+
+.om-chat__error {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.8rem;
+  color: var(--destructive);
+}
+
+.om-chat__input {
+  flex: 1;
+  padding: 1rem;
+  font-size: 1rem;
+  line-height: 1.4;
+  border: 1px solid var(--lightgray);
+  border-radius: 0.5rem;
+  background: var(--light);
+  color: var(--dark);
+  resize: none;
+  overflow-y: auto;
+  font-family: inherit;
+  width: calc(100% - 2rem);
+}
+
+.om-chat__input:focus {
+  outline: none;
+  border-color: var(--secondary);
+}
+
+.om-chat__input::placeholder {
+  color: var(--gray);
+}
+
+/* Minimal scrollbars (no arrows): messages list + textarea */
+.om-chat__messages,
+.om-chat__input {
+  scrollbar-width: thin;
+  scrollbar-color: var(--gray) transparent;
+}
+
+.om-chat__messages::-webkit-scrollbar,
+.om-chat__input::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.om-chat__messages::-webkit-scrollbar-track,
+.om-chat__input::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.om-chat__messages::-webkit-scrollbar-thumb,
+.om-chat__input::-webkit-scrollbar-thumb {
+  background: var(--gray);
+  border-radius: 3px;
+}
+
+.om-chat__messages::-webkit-scrollbar-thumb:hover,
+.om-chat__input::-webkit-scrollbar-thumb:hover {
+  background: var(--darkgray);
+}
+
+/* No explicit send button in UI; Enter submits, Shift+Enter adds newline. */
