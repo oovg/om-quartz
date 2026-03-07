@@ -83,6 +83,8 @@ export interface GlobalConfiguration {
    * Region Codes: https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2
    */
   locale: ValidLocale
+  /** Base URL for the chat API (e.g. Supabase Edge Functions: https://<project-ref>.supabase.co/functions/v1). No trailing slash. When set, the chat modal will send requests to POST {chatApiBaseUrl}/chat. */
+  chatApiBaseUrl?: string
 }
 
 export interface QuartzConfig {

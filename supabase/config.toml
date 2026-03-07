@@ -1,0 +1,9 @@
+# Supabase project config. See https://supabase.com/docs/guides/cli/config
+
+[api]
+enabled = true
+
+[functions]
+# Chat API: public endpoint (no auth for PoC)
+[functions.chat]
+verify_jwt = false

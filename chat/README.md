@@ -7,6 +7,6 @@ Modular chat package for the OM Quartz docs site. Renders a **centered modal** o
 
 ## Configuring the API
 
-The modal calls `POST {apiBaseUrl}/chat` with `{ message, history }` and expects `{ reply }`. By default `apiBaseUrl` is empty, so the modal shows a “not configured” message.
+The modal calls `POST {apiBaseUrl}/chat` with `{ message, history }` and expects `{ reply }`. Each item in `history` has `role: "user" | "assistant"` and `content: string` (aligned with Anthropic’s message roles). On error the API may return `{ error: string }`; the modal shows that message when present. By default `apiBaseUrl` is empty, so the modal shows a “not configured” message.
 
 To point at a backend, the mount script or component would need to pass `apiBaseUrl` (e.g. from a data attribute or global config). For now you can extend `ChatModal` props in `chat.inline.ts` when you add a serverless endpoint.

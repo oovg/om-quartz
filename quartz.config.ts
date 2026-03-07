@@ -14,6 +14,7 @@ const config: QuartzConfig = {
     analytics: null,
     locale: "en-US",
     baseUrl: "mind.theopenmachine.net",
+    chatApiBaseUrl: "https://scvquyniyfpzazkfugne.supabase.co/functions/v1",
     ignorePatterns: [
       ".obsidian"
     ],

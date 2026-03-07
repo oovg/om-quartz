@@ -68,7 +68,7 @@ export function ChatModal(props: ChatModalProps = {}) {
         setMessages((prev) => [
           ...prev,
           {
-            role: "agent",
+            role: "assistant",
             content: "The chat API is not configured yet.",
           },
         ])
@@ -81,19 +81,40 @@ export function ChatModal(props: ChatModalProps = {}) {
         body: JSON.stringify({ message: text, history: historyForRequest }),
       })
 
+      const raw = await res.text()
+      let data: { reply?: string; error?: string } = {}
+      try {
+        if (raw) data = JSON.parse(raw) as { reply?: string; error?: string }
+      } catch {
+        if (!res.ok) throw new Error(raw.trim() || `HTTP ${res.status}`)
+        throw new Error("Invalid response from chat API")
+      }
+      // Check HTTP status first
       if (!res.ok) {
-        const errText = await res.text()
-        throw new Error(errText || `HTTP ${res.status}`)
+        const errMsg = typeof data?.error === "string" ? data.error.trim() : ""
+        const fallback = `Request failed (${res.status})`
+        throw new Error(errMsg || fallback)
       }
 
-      const data = (await res.json()) as { reply?: string }
-      const reply = data?.reply ?? "No reply returned."
-      setMessages((prev) => [...prev, { role: "agent", content: reply }])
+      // Application-level error in successful response body
+      const appErr = typeof data?.error === "string" ? data.error.trim() : ""
+      if (appErr) {
+        throw new Error(appErr)
+      }
+
+      if (typeof data?.reply !== "string") {
+        throw new Error(raw.trim() ? "Invalid response from chat API" : "Empty response from chat API")
+      }
+      const reply = data.reply.trim()
+      if (!reply) {
+        throw new Error("Empty response from chat API")
+      }
+      setMessages((prev) => [...prev, { role: "assistant", content: reply }])
     } catch (e) {
       const message = e instanceof Error ? e.message : "Something went wrong."
       setMessages((prev) => [
         ...prev,
-        { role: "agent", content: `Error: ${message}` },
+        { role: "assistant", content: `Error: ${message}` },
       ])
     } finally {
       setLoading(false)
@@ -137,7 +158,7 @@ export function ChatModal(props: ChatModalProps = {}) {
                     class={
                       m.role === "user"
                         ? "om-chat__message om-chat__message--user"
-                        : "om-chat__message om-chat__message--agent"
+                        : "om-chat__message om-chat__message--assistant"
                     }
                   >
                     <span class="om-chat__message-role">{m.role === "user" ? "You" : "Mind"}</span>
@@ -145,7 +166,7 @@ export function ChatModal(props: ChatModalProps = {}) {
                   </div>
                 ))}
                 {loading && (
-                  <div class="om-chat__message om-chat__message--agent">
+                  <div class="om-chat__message om-chat__message--assistant">
                     <span class="om-chat__message-role">OM</span>
                     <div class="om-chat__message-content om-chat__message-content--loading">
                       …

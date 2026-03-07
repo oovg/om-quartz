@@ -12,6 +12,10 @@
     "url": "https://github.com/jackyzha0/quartz.git"
   },
   "scripts": {
+    "build:chat-index": "node scripts/build-chat-index.mjs",
+    "supabase:db-push": "supabase db push",
+    "supabase:functions-deploy": "supabase functions deploy chat",
+    "supabase:functions-serve": "supabase functions serve chat",
     "quartz": "./quartz/bootstrap-cli.mjs",
     "docs": "npx quartz build --serve -d docs",
     "check": "tsc --noEmit && npx prettier . --check",
@@ -35,6 +39,7 @@
     "quartz": "./quartz/bootstrap-cli.mjs"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.47.0",
     "chat": "file:./chat",
     "@clack/prompts": "^0.11.0",
     "@floating-ui/dom": "^1.7.4",
@@ -99,6 +104,7 @@
     "yargs": "^18.0.0"
   },
   "devDependencies": {
+    "supabase": "^2.0.0",
     "@types/d3": "^7.4.3",
     "@types/hast": "^3.0.4",
     "@types/js-yaml": "^4.0.9",
