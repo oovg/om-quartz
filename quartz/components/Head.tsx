@@ -40,6 +40,12 @@ export default (() => {
       <head>
         <title>{title}</title>
         <meta charSet="utf-8" />
+        <link rel="stylesheet" href="https://use.typekit.net/ulo1dho.css" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `if(history.scrollRestoration)history.scrollRestoration="manual";window.scrollTo(0,0);`,
+          }}
+        />
         {cfg.theme.cdnCaching && cfg.theme.fontOrigin === "googleFonts" && (
           <>
             <link rel="preconnect" href="https://fonts.googleapis.com" />
