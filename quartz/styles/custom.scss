@@ -1,3 +1,240 @@
 @use "./base.scss";
+@use "./variables.scss" as *;
 
-// put your custom CSS here!
+// ---------------------------------------------------------------------------
+// The Open Machine — Quartz Theme Overrides
+// ---------------------------------------------------------------------------
+
+// Font stacks: `:root:root` (specificity 0,2,0,0) beats the single `:root`
+// block appended by Quartz's joinStyles(), which hard-codes DEFAULT_SANS_SERIF
+// as the fallback for all fonts — wrong for the serif body face.
+:root:root {
+  --titleFont: "polymath-display", sans-serif;
+  --headerFont: "polymath-display", sans-serif;
+  --bodyFont: "adobe-caslon-pro", serif;
+  --codeFont: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+  --destructive: #cc0000;
+}
+
+:root[saved-theme="dark"]:root[saved-theme="dark"] {
+  --destructive: #ff6666;
+}
+
+// ---------------------------------------------------------------------------
+// Selection
+// ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Scroll — disable smooth scrolling so full-page navigations start at top
+// instantly instead of showing a visible scroll-down animation.
+// ---------------------------------------------------------------------------
+html {
+  scroll-behavior: auto;
+}
+
+::selection {
+  background: var(--gray);
+  color: var(--light);
+}
+
+// ---------------------------------------------------------------------------
+// Links
+// ---------------------------------------------------------------------------
+a.internal {
+  background-color: transparent;
+  font-weight: inherit;
+}
+
+a {
+  font-weight: inherit;
+}
+
+// ---------------------------------------------------------------------------
+// Blockquotes — inverted panels
+// ---------------------------------------------------------------------------
+blockquote {
+  background-color: var(--dark);
+  color: var(--light);
+  border-left: 3px solid var(--gray);
+  padding: 1rem 1.5rem;
+  border-radius: 3px;
+
+  p,
+  a,
+  li,
+  ul,
+  ol,
+  code,
+  strong,
+  em {
+    color: var(--light);
+    fill: var(--light);
+  }
+
+  a {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+  }
+
+  code {
+    background: var(--gray);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Callouts — monochrome overrides for all types
+// ---------------------------------------------------------------------------
+$callout-types: "note", "abstract", "info", "todo", "tip", "success",
+  "question", "warning", "failure", "danger", "bug", "example", "quote";
+
+.callout {
+  --color: var(--darkgray);
+  --border: var(--lightgray);
+  --bg: var(--highlight);
+
+  @each $type in $callout-types {
+    &[data-callout="#{$type}"] {
+      --color: var(--darkgray);
+      --border: var(--lightgray);
+      --bg: var(--highlight);
+    }
+  }
+
+  &[data-callout="warning"],
+  &[data-callout="failure"],
+  &[data-callout="danger"],
+  &[data-callout="bug"] {
+    --color: var(--destructive);
+    --border: var(--destructive);
+    --bg: var(--highlight);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Graph view
+// ---------------------------------------------------------------------------
+.graph > .graph-outer,
+.graph > .global-graph-outer > .global-graph-container {
+  border-color: var(--lightgray);
+}
+
+// ---------------------------------------------------------------------------
+// Search — neutralise hardcoded box-shadow
+// ---------------------------------------------------------------------------
+.search > .search-container > .search-space {
+  box-shadow:
+    0 14px 50px rgba(0, 0, 0, 0.12),
+    0 10px 30px rgba(0, 0, 0, 0.16);
+}
+
+.search-layout .highlight {
+  background-color: var(--highlight);
+}
+
+.result-card > ul > li > p {
+  color: var(--darkgray);
+}
+
+.result-card > ul > li > p.match-tag {
+  color: var(--dark);
+}
+
+// ---------------------------------------------------------------------------
+// Tags
+// ---------------------------------------------------------------------------
+a.tag-link {
+  background: var(--lightgray);
+  color: var(--darkgray);
+}
+
+// ---------------------------------------------------------------------------
+// Explorer — neutralise accent colors
+// ---------------------------------------------------------------------------
+.explorer-content ul li > a.active {
+  color: var(--dark);
+}
+
+.folder-container div > a,
+.folder-container .folder-icon {
+  color: var(--darkgray);
+}
+
+.folder-container div > a:hover,
+.folder-container .folder-icon:hover {
+  color: var(--dark);
+}
+
+.explorer-content ul li {
+  padding: 0.3rem 0;
+}
+
+// ---------------------------------------------------------------------------
+// Table of contents — understated
+// ---------------------------------------------------------------------------
+.toc {
+  ul.toc-content > li > a {
+    color: var(--gray);
+    opacity: 1;
+    transition: color 0.2s ease;
+
+    &:hover,
+    &.in-view {
+      color: var(--dark);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Backlinks
+// ---------------------------------------------------------------------------
+.backlinks > ul.overflow > li > a {
+  color: var(--secondary);
+
+  &:hover {
+    color: var(--dark);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Chat launcher icon — more prominent stroke
+// ---------------------------------------------------------------------------
+.chatlaunch svg {
+  color: var(--dark);
+}
+
+// ---------------------------------------------------------------------------
+// Chat input — more visible border
+// ---------------------------------------------------------------------------
+.om-chat__input {
+  border-color: var(--gray);
+}
+
+.om-chat__input:focus {
+  border-color: var(--dark);
+}
+
+// ---------------------------------------------------------------------------
+// Chat modal — neutralise hardcoded box-shadow
+// ---------------------------------------------------------------------------
+.om-chat-modal__panel {
+  box-shadow:
+    0 14px 50px rgba(0, 0, 0, 0.15),
+    0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+// ---------------------------------------------------------------------------
+// Footer
+// ---------------------------------------------------------------------------
+footer {
+  opacity: 0.5;
+}
+
+// ---------------------------------------------------------------------------
+// Page title (wordmark)
+// ---------------------------------------------------------------------------
+.page-title {
+  letter-spacing: 0.02em;
+  text-transform: none;
+  font-weight: 700;
+}
