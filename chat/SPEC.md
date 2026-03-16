@@ -1,6 +1,6 @@
 # Interactive Mind Chat - Specification
 
-> **Working document.** Use the [Progress](#progress) section to track implementation status. Update checkboxes and notes as you go.
+> **Working document for this repository.** Use the [Progress](#progress) section to track implementation status for the OM Quartz chat, and update checkboxes and notes as you change code or infrastructure. This file captures design decisions, chosen stack, and wiring details specific to this repo.
 
 ## Progress
 
@@ -15,7 +15,8 @@
 | Define index scope for om-outer-mind | ✅ Done | PoC: all markdown in **content/** (om-outer-mind submodule). Path/tag filtering deferred. |
 | RAG: embed om-outer-mind, vector store or static index | ✅ Done | Voyage AI (voyage-4-lite) + Supabase pgvector; migration, Edge Function RPC, index-build script `scripts/build-chat-index.mjs` |
 | LLM integration | ✅ Done | Claude Haiku 4.5 (Anthropic) in Edge Function |
-| Document: run locally, deploy, refresh index | ✅ Done | chat/README.md; scripts/README.md; §4.3 Supabase setup + “Running the index build” |
+| Document: run locally, deploy, refresh index | ✅ Done | chat/README.md; scripts/README.md; §4.3 Supabase setup + "Running the index build" |
+| Modal config via env only; enableSPA: false | ✅ Done | Chat reads process.env.CHAT_API_BASE_URL; launcher calls window.omChatOpen() |
 
 ## 1. Purpose & Scope
 
@@ -169,10 +170,10 @@ These requirements allow the chat API to perform RAG: embed the user query with 
 **Database:**
 
 - Enable the **pgvector** extension (in a migration).
-- **Table `vault_chunks`:** Stores one row per chunk. Columns: **id** (uuid, primary key), **path** (text, source path or slug), **text** (text, chunk content in markdown), **embedding** (vector(1024)). Optional: **vault** (text) or **updated_at** for multi-vault or refresh logic later.
+- **Table `vault_chunks`:** Stores one row per chunk. Columns: **id** (uuid, primary key), **path** (text, source path or slug), **text** (text, chunk content in markdown), **embedding** (vector(1024)), **created_at** (timestamptz, optional). Optional: **vault** (text) or **updated_at** for multi-vault or refresh logic later. Implemented in `supabase/migrations/20250306000000_vault_chunks_pgvector.sql`.
 - **RPC (optional but recommended):** A Postgres function such as **`match_vault_chunks(query_embedding vector(1024), match_count int)`** that returns rows ordered by cosine distance (`embedding <=> query_embedding`) with `LIMIT match_count`. The Edge Function calls this RPC so it does not need to send raw vectors in the request.
 
-**Index build (out of band):** Implemented as **`scripts/build-chat-index.mjs`** (run with **`npm run build:chat-index`**). It reads markdown from the **content** directory (om-outer-mind submodule), chunks by heading, calls Voyage with `input_type: "document"`, and upserts into **vault_chunks** via the Supabase client. Run after submodule updates or on a schedule (e.g. GitHub Actions). See “Running the index build” in the Supabase setup steps.
+**Index build (out of band):** Implemented as **`scripts/build-chat-index.mjs`** (run with **`npm run build:chat-index`**). It clears **vault_chunks**, then reads markdown from the **content** directory (om-outer-mind submodule), chunks by heading, calls Voyage with `input_type: "document"`, and inserts. The index therefore always matches current content (removed files drop out). Run after submodule updates, content changes, or on a schedule (e.g. GitHub Actions). See “Running the index build” in the Supabase setup steps.
 
 **Chat flow with RAG:** On each user message, the Edge Function: (1) embeds the message with Voyage (`input_type: "query"`), (2) calls the match RPC to get top-k chunks, (3) builds a system or user message that includes “Answer using only this context: …” plus the chunk texts, (4) calls Claude with that context and conversation history, (5) returns the reply.
 
@@ -220,7 +221,7 @@ Use a **shared organization email** for all service accounts where possible.
 
 #### Modal UX and Design
 
-- **Placement and behaviour:** The chat is a **modal** **centered** in the viewport. It is **hidden by default**. A **chat icon launcher** sits next to the theme and reader icons; clicking it opens the modal. When open, the overlay covers the **entire viewport (including sidebars)**: the rest of the site is **blurred**. The modal panel sits above the backdrop and is centered. The user can close the modal via a close button in the modal header or by clicking outside the panel (the overlay). The chat appears on **all pages** (homepage and every content/list page) via the shared layout.
+- **Placement and behaviour:** The chat is a **modal** **centered** in the viewport. It is **hidden by default**. A **chat icon launcher** sits next to the theme and reader icons; clicking it opens the modal. When open, the overlay covers the **entire viewport (including sidebars)**: the rest of the site is **blurred**. The modal panel sits above the backdrop and is centered. The user can close the modal via a close button in the modal header or by clicking outside the panel (the overlay). The chat appears on **all pages** (homepage and every content/list page) via the shared layout. **SPA:** With Quartz SPA routing enabled, the chat icon can stop working after client-side navigation; use **`enableSPA: false`** in `quartz.config.ts` so the chat works on every page (see chat/README.md).
 - **Content:** Message list (user + agent), multi-line text input, optional loading/typing indicator. **Enter** sends a message; **Shift+Enter** inserts a newline (no separate send button).
 - **Scope:** No threads, no multi-room, no persistence requirement for PoC.
 - **Accessibility:** Basic keyboard use and readable text; toggle and modal use appropriate ARIA (e.g. `aria-expanded`, `role="dialog"`, `aria-label`).
@@ -233,13 +234,17 @@ Use a **shared organization email** for all service accounts where possible.
 
 #### Embedded Modal in Quartz
 
-Quartz is a static site generator. Pages are composed of **layout slots** filled by **components** (Preact-based). To show the chat on **all pages** as a centered modal (toggle button in lower-right):
+Quartz is a static site generator. Pages are composed of **layout slots** filled by **components** (Preact-based). This implementation uses **`enableSPA: false`**, so each navigation is a full page load; no `nav` event or re-mount logic is used.
 
-1. **Layout:** Add the chat component to **`sharedPageComponents.afterBody`** in `quartz.layout.ts`. That way it is included on every page (homepage, content pages, list pages). The chat is rendered as a fixed-position shell (toggle button + modal), not in the sidebar.
-2. **Component:** The Quartz component renders a mount div and attaches the modal script and styles. Components live under `quartz/components/`, are re-exported in `quartz/components/index.ts`, and can attach `.css` and `.afterDOMLoaded` (see Quartz docs: [creating components](../docs/advanced/creating%20components.md), [layout](../docs/layout.md)).
-3. **Interactivity:** The modal is mounted in `.afterDOMLoaded` (or an imported `.inline.ts` script). The modal is opened via a **header icon launcher** that calls a global `window.omChatOpen()` function exposed by the modal after it mounts. The modal is centered with a blurred backdrop; the user can close the modal via a close control or backdrop. Listen for the `"nav"` event and use `window.addCleanup` on navigation if using SPA routing.
+1. **Layout:** In **`quartz.layout.ts`**, add **`Component.Chat()`** to **`sharedPageComponents.afterBody`** so the chat mount point exists on every page. Add **`Component.ChatLauncher()`** in the header area next to theme and reader controls: in **`defaultContentPageLayout`** and **`defaultListPageLayout`**, place it inside the left **Flex** (e.g. after `Darkmode()` and `ReaderMode()`). Components are imported from `quartz/components` and re-exported in `quartz/components/index.ts`.
 
-**Modular chat package:** The spec and chat modal source live in **chat/** with its own `package.json`. The Quartz component renders a mount div and uses an inline script that imports and mounts the modal from the `chat` package (workspace package approach).
+2. **Chat component** (`quartz/components/Chat.tsx`): Renders a single div with **`id="om-chat-root"`**, **`class="om-chat-wrapper"`**, and **`data-api-base-url`** set from **`process.env.CHAT_API_BASE_URL`** at build time . Attaches **`Chat.css`** and an **`.afterDOMLoaded`** script (`quartz/components/scripts/chat.inline.ts`). The script runs once after DOM load: it gets the element by `om-chat-root`, reads `data-api-base-url`, and renders the Preact **ChatModal** from the `chat` package into that div.
+
+3. **Chat launcher component** (`quartz/components/ChatLauncher.tsx`): Renders a button with **`class="chatlaunch"`** and **`aria-label="Open chat"`**. Its **`.afterDOMLoaded`** script (`quartz/components/scripts/chatLauncher.inline.ts`) runs once, finds all `button.chatlaunch` elements, and adds a click handler that calls **`window.omChatOpen()`**. Uses **`data-chat-bound="1"`** on each button to avoid binding twice if the script runs multiple times.
+
+4. **Modal (chat package):** On mount, the **ChatModal** assigns **`window.omChatOpen`**, **`window.omChatClose`**, and **`window.omChatToggle`** so the launcher (and any other script) can open, close, or toggle the modal. The modal is centered with a blurred backdrop; the user closes it via the header close control or by clicking the backdrop.
+
+**Modular chat package:** The chat modal source lives in **chat/** with its own `package.json` (workspace dependency). The Quartz Chat component imports and mounts **ChatModal** from the `chat` package via the inline script.
 
 #### Repository layout: where to put the chat API
 
@@ -280,14 +285,14 @@ Follow these steps once per Supabase project. The code in this repo is **deploye
    npx supabase functions deploy chat
    ```
    Or: `npm run supabase:functions-deploy`. The CLI uploads **`supabase/functions/chat/`** to your project. The API is then available at `https://<project-ref>.supabase.co/functions/v1/chat`.
-7. **Configure the modal:** In **`quartz.config.ts`**, set `configuration.chatApiBaseUrl` to your Edge Function base URL (e.g. `https://<project-ref>.supabase.co/functions/v1`). The modal sends `POST …/chat` with `{ message, history }`.
+7. **Configure the modal:** Set the **`CHAT_API_BASE_URL`** environment variable when building Quartz (e.g. `CHAT_API_BASE_URL=https://<project-ref>.supabase.co/functions/v1`). The **Chat component** reads it via `process.env.CHAT_API_BASE_URL` at build time and passes it to the modal via the mount div’s `data-api-base-url`. Do not commit the URL. Example: `CHAT_API_BASE_URL=https://<project-ref>.supabase.co/functions/v1 npx quartz build`, or set it in CI (e.g. GitHub Actions secrets). The modal sends `POST …/chat` with `{ message, history }`.
 8. **Populate the RAG index:** Run the index-build script so the chat can answer from vault content. See **“Running the index build”** below.
 
 **CI (optional):** To deploy on push, add a GitHub Actions workflow that runs `npx supabase link` (using `SUPABASE_ACCESS_TOKEN`) and `npx supabase functions deploy chat`. Use `npx supabase db push` only when migrations change.
 
 #### Running the index build
 
-The script **`scripts/build-chat-index.mjs`** reads markdown from the **`content`** directory (the om-outer-mind submodule), chunks it, embeds with Voyage (voyage-4-lite, `input_type: "document"`), and upserts into Supabase **vault_chunks**. After pushing these changes to GitHub, someone else can run it as follows.
+The script **`scripts/build-chat-index.mjs`** replaces the RAG index with the current **`content`** directory: it clears **vault_chunks**, then reads markdown from content (om-outer-mind submodule), chunks it, embeds with Voyage (voyage-4-lite, `input_type: "document"`), and inserts. So the index always reflects current content—**run it after removing or changing content** so removed files are no longer indexed. After pushing these changes to GitHub, someone else can run it as follows.
 
 1. **Clone the repo and pull the latest** (including this script and the `content` submodule):
    ```bash
@@ -319,9 +324,9 @@ The script **`scripts/build-chat-index.mjs`** reads markdown from the **`content
    ```bash
    node scripts/build-chat-index.mjs
    ```
-   The script clears **vault_chunks**, then inserts the new chunks. No need to redeploy the chat function; the next request will use the updated table.
+   The script clears **vault_chunks**, then inserts only chunks from the current **content/** directory. Removed files are no longer in the index. No need to redeploy the chat function; the next request will use the updated table.
 
-**When to re-run:** After updating the **content** submodule (e.g. after pulling new om-outer-mind changes) or when you add/change markdown in **content/**. Re-run the script and optionally refresh the submodule first:
+**When to re-run:** After updating the **content** submodule, after **removing** files from **content/**, or when you add/change markdown. Re-run so the index matches current content; optionally refresh the submodule first:
    ```bash
    git submodule update --remote content
    npm run build:chat-index
@@ -334,6 +339,10 @@ The script **`scripts/build-chat-index.mjs`** reads markdown from the **`content
 - [ ] One documented way to refresh vault-derived content and re-deploy or re-index.
 - [ ] No vault write access; no exposure of API keys or full vault to the client.
 - [ ] Architecture and data model do not preclude adding om-inner-mind (and `ai-ready` filtering).
+
+### 4.5 Next steps (improvements)
+
+- **Chat with SPA enabled:** The PoC uses `enableSPA: false` so the chat icon works on every page (see §4.2 Placement and behaviour). A future improvement is to make the chat work with Quartz SPA routing enabled: the icon should open the modal after client-side navigation, and conversation state could persist across in-app navigations within the same session. This likely requires changes in how Quartz patches the document head on nav (e.g. re-executing or re-loading the postscript so the modal mounts and registers correctly).
 
 ## 5. Iteration 2 – Future Work (outline)
 

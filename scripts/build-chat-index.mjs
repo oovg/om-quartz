@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 /**
  * Build RAG index from the content directory (om-outer-mind submodule).
- * Chunks markdown, embeds with Voyage voyage-4-lite, upserts into Supabase vault_chunks.
+ * Replaces the entire vault_chunks table: clears existing rows, then inserts chunks
+ * from the current content/ only. So after running, the index exactly matches content/
+ * — files removed from content/ are no longer in the index. Run after submodule updates
+ * or any content add/remove/change.
  *
  * Prerequisites:
  *   - content/ populated (git submodule: git submodule update --init --recursive)
@@ -214,7 +217,7 @@ async function main() {
     console.log(`  ${Math.min(i + VOYAGE_BATCH_SIZE, chunks.length)} / ${chunks.length}`)
   }
 
-  console.log("Done. vault_chunks has", chunks.length, "rows.")
+  console.log("Done. vault_chunks has", chunks.length, "rows (index matches current content/; removed files are no longer indexed).")
 }
 
 main().catch((e) => {

@@ -9,12 +9,11 @@ const config: QuartzConfig = {
   configuration: {
     pageTitle: "Open Machine - Interactive Mind",
     pageTitleSuffix: " | Open Machine Mind",
-    enableSPA: true,
+    enableSPA: false,
     enablePopovers: true,
     analytics: null,
     locale: "en-US",
     baseUrl: "mind.theopenmachine.net",
-    chatApiBaseUrl: "https://scvquyniyfpzazkfugne.supabase.co/functions/v1",
     ignorePatterns: [
       ".obsidian"
     ],

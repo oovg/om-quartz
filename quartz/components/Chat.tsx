@@ -4,8 +4,8 @@ import style from "./styles/chat.scss"
 // @ts-ignore
 import script from "./scripts/chat.inline"
 
-const Chat: QuartzComponent = ({ cfg }: QuartzComponentProps) => {
-  const apiBaseUrl = cfg?.chatApiBaseUrl ?? ""
+const Chat: QuartzComponent = (_props: QuartzComponentProps) => {
+  const apiBaseUrl = process.env.CHAT_API_BASE_URL ?? ""
   return (
     <div id="om-chat-root" class="om-chat-wrapper" data-api-base-url={apiBaseUrl || undefined}>
       {/* Modal is mounted here by chat.inline.ts after DOM load */}
