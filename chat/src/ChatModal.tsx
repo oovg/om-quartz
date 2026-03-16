@@ -1,9 +1,20 @@
-import { useState, useRef, useEffect } from "preact/hooks"
+import { useState, useRef, useEffect, useMemo } from "preact/hooks"
+import { marked } from "marked"
 import type { ChatMessage, ChatModalProps } from "./types"
 
+marked.setOptions({ breaks: true, gfm: true })
+
 const defaultApiBaseUrl = ""
-const defaultPlaceholder = "What is The Open Machine?"
+const defaultPlaceholder = "Type a message..."
 const defaultTitle = "Interactive Mind Chat"
+
+const suggestedQuestions = [
+  "What is The Open Machine and what does it do?",
+  "What are open protocols and why do they matter?",
+  "What are extitutions and how do they differ from institutions?",
+  "What frameworks does The Open Machine use to evaluate technology?",
+  "What is The Open Machine working on in 2026?",
+]
 
 export function ChatModal(props: ChatModalProps = {}) {
   const {
@@ -51,8 +62,7 @@ export function ChatModal(props: ChatModalProps = {}) {
     }
   }, [])
 
-  const sendMessage = async () => {
-    const text = input.trim()
+  const sendText = async (text: string) => {
     if (!text || loading) return
 
     const userMessage: ChatMessage = { role: "user", content: text }
@@ -89,14 +99,12 @@ export function ChatModal(props: ChatModalProps = {}) {
         if (!res.ok) throw new Error(raw.trim() || `HTTP ${res.status}`)
         throw new Error("Invalid response from chat API")
       }
-      // Check HTTP status first
       if (!res.ok) {
         const errMsg = typeof data?.error === "string" ? data.error.trim() : ""
         const fallback = `Request failed (${res.status})`
         throw new Error(errMsg || fallback)
       }
 
-      // Application-level error in successful response body
       const appErr = typeof data?.error === "string" ? data.error.trim() : ""
       if (appErr) {
         throw new Error(appErr)
@@ -120,6 +128,8 @@ export function ChatModal(props: ChatModalProps = {}) {
       setLoading(false)
     }
   }
+
+  const sendMessage = () => sendText(input.trim())
 
   const handleSubmit = (e: Event) => {
     e.preventDefault()
@@ -150,7 +160,22 @@ export function ChatModal(props: ChatModalProps = {}) {
             <div class="om-chat">
               <div class="om-chat__messages" ref={listRef} role="log" aria-live="polite">
                 {messages.length === 0 && (
-                  <p class="om-chat__empty">Probe the mind of The Open Machine...</p>
+                  <div class="om-chat__suggestions">
+                    <p class="om-chat__empty">Probe the mind of The Open Machine...</p>
+                    <div class="om-chat__suggestion-list">
+                      {suggestedQuestions.map((q, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          class="om-chat__suggestion"
+                          onClick={() => sendText(q)}
+                          disabled={loading}
+                        >
+                          {q}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 )}
                 {messages.map((m, i) => (
                   <div
@@ -162,7 +187,14 @@ export function ChatModal(props: ChatModalProps = {}) {
                     }
                   >
                     <span class="om-chat__message-role">{m.role === "user" ? "You" : "Mind"}</span>
-                    <div class="om-chat__message-content">{m.content}</div>
+                    {m.role === "assistant" ? (
+                      <div
+                        class="om-chat__message-content"
+                        dangerouslySetInnerHTML={{ __html: marked.parse(m.content) as string }}
+                      />
+                    ) : (
+                      <div class="om-chat__message-content">{m.content}</div>
+                    )}
                   </div>
                 ))}
                 {loading && (
@@ -202,4 +234,3 @@ export function ChatModal(props: ChatModalProps = {}) {
     </div>
   )
 }
-
