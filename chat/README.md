@@ -3,16 +3,14 @@
 Modular chat package for the OM Quartz docs site. Renders a **centered modal** opened via a **chat icon** next to the theme/reader icons; blurred backdrop when open; talks to a chat API (RAG + LLM).
 
 - **Spec:** [SPEC.md](./SPEC.md) — implementation-specific design and decisions for this repo (stack, data model, wiring into Quartz, Supabase/Voyage/Anthropic usage). Updated as a *working document* while the chat evolves.
-- **Build blueprint:** [BUILD.md](./BUILD.md) — generic, implementation-agnostic instructions for adding a similar chat modal and RAG stack to a brand-new Quartz site.
-- **Modal:** Preact component in `src/ChatModal.tsx`; mounted by Quartz via `quartz/components/scripts/chat.inline.ts`.
+- **Build:** [BUILD.md](./BUILD.md) — generic instructions for adding a similar chat modal and RAG stack to a brand-new Quartz site.
+- **SPA Bug:** [BUG_SPA.md](./BUG_SPA.md) — debugging attempts to make the chat modal work reliably with Quartz SPA routing enabled.
 
 ## Configuring the API
 
-The modal calls `POST {apiBaseUrl}/chat` with `{ message, history }` and expects `{ reply }`. Each item in `history` has `role: "user" | "assistant"` and `content: string` (aligned with Anthropic’s message roles). On error the API may return `{ error: string }`; the modal shows that message when present. By default `apiBaseUrl` is empty, so the modal shows a “not configured” message.
+The chat API base URL is set at **build time** via the `CHAT_API_BASE_URL` environment variable (see [SPEC.md](./SPEC.md) § Supabase setup, step 7). The modal then calls `POST {apiBaseUrl}/chat` with `{ message, history }` and expects `{ reply }`. Each item in `history` has `role: "user" | "assistant"` and `content: string` (aligned with Anthropic’s message roles). On error the API may return `{ error: string }`; the modal shows that message when present. By default, if `CHAT_API_BASE_URL` is not set, `apiBaseUrl` is empty and the modal shows a “not configured” message. Do not commit the URL to the repo.
 
-The chat API base URL is set at **build time** via the `CHAT_API_BASE_URL` environment variable (see [SPEC.md](./SPEC.md) § Supabase setup, step 7). Do not commit the URL to the repo.
-
-**SPA navigation:** With Quartz’s SPA routing enabled (`enableSPA: true`), the chat icon often stops working after you navigate to another page. **Use `enableSPA: false`** in `quartz.config.ts` so the chat works on every page (each navigation is a full load; messages do not persist across navigations). Making the chat work with SPA enabled is documented as a next step in [SPEC.md](./SPEC.md) §4.5.
+**SPA navigation:** With Quartz’s SPA routing enabled (`enableSPA: true`), the chat icon often stops working after you navigate to another page. **Use `enableSPA: false`** in `quartz.config.ts` so the chat works on every page (each navigation is a full load; messages do not persist across navigations). Making the chat work with SPA enabled is documented as a next step in [SPEC.md](./SPEC.md) §4.5. See also [BUG_SPA.md](./BUG_SPA.md) for a detailed log of attempted fixes and test procedures.
 
 ## Updating what the chat knows
 
@@ -42,11 +40,22 @@ Do **not** commit the `.env` file; it’s already in `.gitignore`.
 Do these steps from the **repo root** (the folder that contains `package.json` and the `content` folder).
 
 1. **Get the latest content (if you use the submodule)**  
-   If your content comes from a submodule and you want the very latest from the server:
+   For most people, you just need the content at the commit this repo already points to:
    ```bash
    git submodule update --init --recursive
    ```
    If you already have content and only changed files locally, you can skip this.
+
+   #### For maintainers: updating the submodule to the latest upstream content
+
+   If you maintain this repo and want to move the `content` submodule forward to the latest commit on its configured branch, you can run:
+   ```bash
+   git submodule update --remote --recursive
+   git status # verify updated submodule pointers
+   git commit -am "Update content submodule"
+   git push
+   ```
+   This fetches the latest commits from the submodule’s remote, updates the submodule working tree, and then records the new commit pointer in this repo.
 
 2. **Install dependencies (if you haven’t already)**  
    ```bash
