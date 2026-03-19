@@ -9,7 +9,7 @@ This document specifies:
 - The **shared RAG + LLM behavior** (Voyage embeddings + pgvector similarity search + Claude Haiku 4.5)
 - How to add **pay-per-call monetization** via **x402** (HTTP `402 Payment Required` + retry with payment proof)
 
-Status: WIP spec. The backend currently implements the minimal `POST /chat` route in `supabase/functions/chat/index.ts`. The OpenAI-style route is specified here so it can be added as a thin wrapper later.
+> **Working document for this repository.** Updated as the agent API evolves. The PoC backend currently implements the minimal `POST /chat` route in `supabase/functions/chat/index.ts`. The OpenAI-style route is specified here so it can be added as a thin wrapper later.
 
 ## 1. Base URL
 
@@ -315,6 +315,103 @@ Because this is per-call billing, the server/provider can:
 
 - monetize each call to generate the RAG retrieval + LLM completion cost
 - reject unpaid calls quickly with HTTP `402`, before spending embedding/LLM compute (best practice)
+
+### 6.9 Chosen facilitator (reference implementation) and account overhead (working note)
+
+x402’s protocol flow is facilitator-agnostic, but **your implementation needs something that can verify and settle payments**.
+
+This repo’s spec uses a **reference facilitator** pattern: you may run a facilitator you deploy, or use a facilitator provided by a third party. This section documents a concrete option you can use as a starting point.
+
+#### Reference facilitator: `raid-guild/x402-facilitator-go`
+
+- Repo: [raid-guild/x402-facilitator-go](https://github.com/raid-guild/x402-facilitator-go)
+- Deployment: designed for “one-click deploy” on serverless platforms like Vercel
+- Facilitator responsibilities (at a high level): verify `X-PAYMENT`/payment payloads and then settle on-chain via a `/settle` call
+- Facilitator endpoints (as described by the project): `POST /verify` and `POST /settle` (and discovery endpoints like `/supported`)
+
+#### What “new account overhead” you should expect
+
+In practice, there are usually **two** categories of accounts involved:
+
+1. **Facilitator operator account (you / your infrastructure)**
+   - You run the facilitator and provide its signing/private key via environment variables (the reference facilitator uses `PRIVATE_KEY`).
+   - That facilitator account must have enough assets to pay for **gas/transaction execution**.
+   - You also provide network connectivity via RPC URLs (for example Base / Base Sepolia / Ethereum mainnet / testnets).
+   - Optionally, you can protect `POST /verify` and `POST /settle` with auth settings (the reference facilitator supports API-key based auth patterns; if you do not configure auth, endpoints are public).
+
+2. **Agent wallet account (the caller / Claude integration)**
+   - Agents still need a way to sign payment payloads locally (typically via an x402 client/SDK or an agent wallet library).
+   - This does **not** require you to create “user accounts” for your API; it requires the agent runtime to have a wallet private key (or an SDK that can sign on the agent’s behalf).
+
+What you generally do **not** need:
+
+- You do not need to create a “new account” just for the HTTP API itself (your API just validates payment headers/proofs as x402 requires).
+- You do not need subscriptions/credit-card style onboarding for agents, because x402 is pay-per-call.
+
+### 6.10 x402 integration options (avoid or use Coinbase libraries)
+
+This spec is intentionally written so you can choose how much x402 client logic you import on the **server/API side** and/or the **agent side**.
+
+At a high level, the contract your agent needs is consistent:
+
+1. The agent makes an HTTP request to your endpoint.
+2. If payment is missing, the server returns `402 Payment Required` with machine-readable payment requirements.
+3. The agent produces payment proof using whatever x402 client mechanism it supports.
+4. The agent retries the exact same request, attaching payment proof in an HTTP header.
+5. Your server verifies the payment (typically via the facilitator) and returns the normal response.
+
+#### Option A: Minimal server implementation (no Coinbase x402 package)
+
+If your goal is to avoid adding the Coinbase x402 middleware/client dependencies to your server, you can:
+
+- Treat the facilitator as the authority for verification and settlement
+- Return `402` with payment requirements in whatever structure your chosen x402 client expects
+- On retry, forward/verify the received proof by calling your facilitator’s `verify`/`settle` endpoints
+
+In this option, the server remains an “x402 policy gate” around the existing RAG+LLM pipeline, and the facilitator handles the protocol details.
+
+This is compatible with the facilitator reference implementation described in §6.9.
+
+#### Option B: Use Coinbase tooling on the agent side (while keeping server dependencies minimal)
+
+If the agent runtime can use an x402 client/SDK (including Coinbase’s), then:
+
+- The agent handles `402` negotiation automatically
+- The agent sends the proof header that its x402 client library generates (for example `X-PAYMENT`)
+- Your server only needs to accept those proof headers and return `200` after verification
+
+This option can work well for teams building agent infrastructure in TypeScript/Python/Go, without requiring you to replicate x402 verification cryptography inside your API.
+
+#### Option C: Add a payment-adapter “wrapper” for Claude (recommended if Claude-tooling can’t handle 402)
+
+Some agent environments (including some Claude tool integrations) may not automatically implement the `402 -> pay -> retry` loop.
+
+If the calling agent cannot reliably implement the x402 retry logic, deploy a small adapter endpoint/tool that:
+
+- Accepts the same input as your agent-facing API
+- Performs the x402 negotiation + retry on behalf of the agent
+- Returns only the final `200` response body to the agent
+
+This preserves a simple developer experience: “Claude calls one API; the adapter handles x402.”
+
+### 6.11 Agent integration guidance (Claude and “any agent”)
+
+For a third party building an agent that can call your API, the only requirement is that the agent can execute the x402 lifecycle over HTTP.
+
+#### What “Claude calls the API” means in practice
+
+Claude itself is a model, not a payment client. For Claude-driven systems, one of these must be true:
+
+- Their orchestrator/tool runner implements x402 retry logic (on `402`, sign payment proof, retry the request)
+- Or they front your API with a wrapper adapter that implements x402 on their behalf (§6.10 Option C)
+
+#### Minimal generic agent algorithm
+
+1. `POST /chat` (or `POST /v1/chat/completions`) without payment proof.
+2. Receive `402` with payment requirements in the response body.
+3. Construct a payment payload and generate proof using an x402-capable client mechanism.
+4. Retry the same request, adding the proof header (`X-PAYMENT` in many “exact scheme” examples; accept whichever header variant your facilitator/client produces).
+5. Read the `200` response body (`{ reply }` or OpenAI-style completion JSON).
 
 ## 7. Implementation Mapping (Non-normative)
 

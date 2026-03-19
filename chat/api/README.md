@@ -1,6 +1,9 @@
-# Agent API (with x402 monetization)
+# Interactive Mind Agent API
 
-This directory contains documentation for the **agent-facing API** behind the OM Quartz chat modal.
+Modular agent-facing API documentation behind the OM Quartz chat modal.
+
+- **Spec:** [SPEC.md](./SPEC.md) — agent API contract and x402 pay-per-call flow (working document)
+- **Build:** [BUILD.md](./BUILD.md) — placeholder blueprint for building the agent API (and expanding later)
 
 ## What agents can call
 
@@ -9,11 +12,7 @@ This directory contains documentation for the **agent-facing API** behind the OM
 
 Both endpoints use the same underlying **RAG + LLM** behavior (Voyage embeddings + pgvector retrieval + Claude Haiku).
 
-## Monetization
+## Monetization (optional)
 
 When enabled, the API can require payment per call using **x402** (HTTP `402 Payment Required` + agent retry with payment proof).
-
-## Full contract
-
-For the machine-readable request/response details and the x402 flow, see `AGENT_API_SPEC.md`.
 
