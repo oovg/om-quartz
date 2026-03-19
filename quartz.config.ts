@@ -3,12 +3,12 @@ import * as Plugin from "./quartz/plugins"
 
 /**
  * Quartz 4 Configuration
- * Open Machine — Public Mind
+ * Open Machine — Interactive Mind
  */
 const config: QuartzConfig = {
   configuration: {
     pageTitle: "The Open Machine",
-    pageTitleSuffix: " | The Open Machine",
+    pageTitleSuffix: " | Interactive Mind",
     enableSPA: false,
     enablePopovers: true,
     analytics: null,
