@@ -5,6 +5,7 @@ Modular chat package for the OM Quartz docs site. Renders a **centered modal** o
 - **Spec:** [SPEC.md](./SPEC.md) — implementation-specific design and decisions for this repo (stack, data model, wiring into Quartz, Supabase/Voyage/Anthropic usage). Updated as a *working document* while the chat evolves.
 - **Build:** [BUILD.md](./BUILD.md) — generic instructions for adding a similar chat modal and RAG stack to a brand-new Quartz site.
 - **SPA Bug:** [BUG_SPA.md](./BUG_SPA.md) — debugging attempts to make the chat modal work reliably with Quartz SPA routing enabled.
+- **API:** [api/README.md](./api/README.md) — agent-facing API documentation (including x402 pay-per-call monetization).
 
 ## Configuring the API
 
